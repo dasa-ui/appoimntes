@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8">
+  <title>קומבו בוקס 4 רמות עם קישורים</title>
+</head>
+<body>
+  <h2>בחירה מדורגת (4 רמות) מקובץ Excel עם קישורים</h2>
+
+  <input type="file" id="excelFile" accept=".xlsx" />
+  <br><br>
+
+  <label>תחום:
+    <select id="domain"></select>
+  </label><br><br>
+
+  <label>שירות:
+    <select id="service"></select>
+  </label><br><br>
+
+  <label>התמחות:
+    <select id="specialty"></select>
+  </label><br><br>
+
+  <label>תת התמחות:
+    <select id="subspecialty"></select>
+  </label><br><br>
+
+  <button id="goButton">מעבר לקישור</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    let data = [];
+
+    document.getElementById('excelFile').addEventListener('change', function (e) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const workbook = XLSX.read(e.target.result, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        data = XLSX.utils.sheet_to_json(sheet);
+        populateDropdown('domain', [...new Set(data.map(d => d['תחום']))]);
+      };
+      reader.readAsBinaryString(e.target.files[0]);
+    });
+
+    function populateDropdown(id, options) {
+      const select = document.getElementById(id);
+      select.innerHTML = '<option value="">בחר</option>';
+      options.forEach(opt => {
+        const option = document.createElement('option');
+        option.value = opt;
+        option.textContent = opt;
+        select.appendChild(option);
+      });
+    }
+
+    document.getElementById('domain').addEventListener('change', function () {
+      const domain = this.value;
+      const services = [...new Set(data
+        .filter(d => d['תחום'] === domain)
+        .map(d => d['שירות']))];
+      populateDropdown('service', services);
+      populateDropdown('specialty', []);
+      populateDropdown('subspecialty', []);
+    });
+
+    document.getElementById('service').addEventListener('change', function () {
+      const domain = document.getElementById('domain').value;
+      const service = this.value;
+      const specialties = [...new Set(data
+        .filter(d => d['תחום'] === domain && d['שירות'] === service)
+        .map(d => d['התמחות']))];
+      populateDropdown('specialty', specialties);
+      populateDropdown('subspecialty', []);
+    });
+
+    document.getElementById('specialty').addEventListener('change', function () {
+      const domain = document.getElementById('domain').value;
+      const service = document.getElementById('service').value;
+      const specialty = this.value;
+      const subspecialties = [...new Set(data
+        .filter(d => d['תחום'] === domain && d['שירות'] === service && d['התמחות'] === specialty)
+        .map(d => d['תת התמחות']))];
+      populateDropdown('subspecialty', subspecialties);
+    });
+
+    document.getElementById('goButton').addEventListener('click', function () {
+      const domain = document.getElementById('domain').value;
+      const service = document.getElementById('service').value;
+      const specialty = document.getElementById('specialty').value;
+      const subspecialty = document.getElementById('subspecialty').value;
+
+      let match = data.find(d =>
+        d['תחום'] === domain &&
+        d['שירות'] === service &&
+        d['התמחות'] === specialty &&
+        d['תת התמחות'] === subspecialty
+      );
+
+      if (!match && specialty) {
+        match = data.find(d =>
+          d['תחום'] === domain &&
+          d['שירות'] === service &&
+          d['התמחות'] === specialty
+        );
+      }
+
+      if (!match && service) {
+        match = data.find(d =>
+          d['תחום'] === domain &&
+          d['שירות'] === service
+        );
+      }
+
+      if (match && match['קישור']) {
+        window.open(match['קישור'], '_blank');
+      } else {
+        alert("לא נמצא קישור מתאים לבחירה שלך.");
+      }
+    });
+  </script>
+</body>
+</html>
